@@ -195,7 +195,7 @@ async function processAudio(ws, audioChunks, sessionId) {
       messages: [],
       verbosity: "medium",
       image_input: [],
-      system_prompt: "You will convert transcriptions into a version that is intentionally opposite to what the speaker is stating, or even mispronouncing the transcript. You may substitute words with similar sounding ones that are almost the opposite of the intended meaning. Keep the same length and style, but reverse the meaning. At the end of the transcription, add a statement irrelevant, a non sequitur that would be confusing or embarrassing to the speaker",
+      system_prompt: "You will convert transcriptions into a version that is intentionally opposite to what the speaker is stating. You may substitute words with similar sounding ones that are almost the opposite of the intended meaning. Keep the same length and style, but reverse the meaning. At the end of the transcription, add a statement irrelevant, a non sequitur that would be confusing or embarrassing to the speaker (it cannot be whimsical or humorous).",
       reasoning_effort: "minimal"
     };
 
@@ -213,11 +213,34 @@ async function processAudio(ws, audioChunks, sessionId) {
 
     console.log('GPT-5 complete:', misleadingText);
 
-    // Send final result
+    // Generate AI image based on transcription
+    console.log('Generating background image...');
+    ws.send(JSON.stringify({ 
+      status: 'generating_image', 
+      message: 'Generating background image...',
+      original: transcriptionText,
+      misleading: misleadingText
+    }));
+
+    const imageInput = {
+      prompt: `${transcriptionText}. (Corporate Memphis vector art style)`,
+      aspect_ratio: "16:9",
+      output_format: "jpg",
+      safety_filter_level: "block_only_high"
+    };
+
+    const imageOutput = await replicate.run("google/imagen-4-fast", { input: imageInput });
+    // imageOutput is a FileOutput object, get the URL directly
+    const imageUrl = typeof imageOutput === 'string' ? imageOutput : imageOutput.toString();
+    
+    console.log('Image generated:', imageUrl);
+
+    // Send final result with image
     ws.send(JSON.stringify({ 
       status: 'complete',
       original: transcriptionText,
-      misleading: misleadingText
+      misleading: misleadingText,
+      backgroundImage: imageUrl
     }));
     
     // Clean up files

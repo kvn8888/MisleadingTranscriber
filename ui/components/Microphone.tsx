@@ -8,6 +8,7 @@ interface MicrophoneProps {
     original: string;
     misleading: string;
     statusMessage: string;
+    backgroundImage: string;
   }) => void;
 }
 
@@ -18,6 +19,7 @@ interface TranscriptionResult {
   message?: string;
   chunk?: string;
   error?: string;
+  backgroundImage?: string;
 }
 
 export default function Microphone({ serverUrl = 'http://localhost:3001', onTranscriptionUpdate }: MicrophoneProps) {
@@ -29,6 +31,7 @@ export default function Microphone({ serverUrl = 'http://localhost:3001', onTran
   const [isProcessing, setIsProcessing] = useState(false);
   const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [backgroundImage, setBackgroundImage] = useState<string>('');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -154,7 +157,8 @@ export default function Microphone({ serverUrl = 'http://localhost:3001', onTran
             onTranscriptionUpdate?.({
               original: data.original || originalText,
               misleading: misleadingText,
-              statusMessage: data.message || ''
+              statusMessage: data.message || '',
+              backgroundImage: backgroundImage
             });
           } else if (data.status === 'streaming') {
             setMisleadingText(data.misleading || '');
@@ -162,18 +166,29 @@ export default function Microphone({ serverUrl = 'http://localhost:3001', onTran
             onTranscriptionUpdate?.({
               original: originalText,
               misleading: data.misleading || '',
-              statusMessage: 'Generating misleading version...'
+              statusMessage: 'Generating misleading version...',
+              backgroundImage: backgroundImage
+            });
+          } else if (data.status === 'generating_image') {
+            setStatusMessage(data.message || 'Generating background image...');
+            onTranscriptionUpdate?.({
+              original: data.original || originalText,
+              misleading: data.misleading || misleadingText,
+              statusMessage: data.message || 'Generating background image...',
+              backgroundImage: backgroundImage
             });
           } else if (data.status === 'complete') {
             setOriginalText(data.original || '');
             setMisleadingText(data.misleading || '');
+            setBackgroundImage(data.backgroundImage || '');
             setStatusMessage('Complete!');
             setIsProcessing(false);
-            // Update parent component with final data
+            // Update parent component with final data including image
             onTranscriptionUpdate?.({
               original: data.original || '',
               misleading: data.misleading || '',
-              statusMessage: 'Complete!'
+              statusMessage: 'Complete!',
+              backgroundImage: data.backgroundImage || ''
             });
             // Close WebSocket after receiving results
             if (websocketRef.current) {
