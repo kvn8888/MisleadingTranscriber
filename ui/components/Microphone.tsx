@@ -27,18 +27,90 @@ export default function Microphone({ serverUrl = 'http://localhost:3001', onTran
   const [originalText, setOriginalText] = useState<string>('');
   const [misleadingText, setMisleadingText] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const websocketRef = useRef<WebSocket | null>(null);
+  const buttonRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // Handle spacebar press
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !isProcessing) {
+        e.preventDefault();
+        if (isRecording) {
+          stopRecording();
+        } else {
+          startRecording();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [isRecording, isProcessing]);
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      // Cleanup on unmount
-      stopRecording();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (websocketRef.current) {
+        websocketRef.current.close();
+      }
     };
   }, []);
+
+  // Make button run away from cursor
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isRecording || isProcessing || !buttonRef.current || !containerRef.current) return;
+
+      const button = buttonRef.current.getBoundingClientRect();
+      const container = containerRef.current.getBoundingClientRect();
+      
+      const buttonCenterX = button.left + button.width / 2;
+      const buttonCenterY = button.top + button.height / 2;
+      
+      const distanceX = e.clientX - buttonCenterX;
+      const distanceY = e.clientY - buttonCenterY;
+      const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+      
+      // Run away if cursor is within 150px
+      const threshold = 150;
+      if (distance < threshold) {
+        const angle = Math.atan2(distanceY, distanceX);
+        const force = (threshold - distance) / threshold;
+        
+        // Calculate new position (move away from cursor)
+        const moveDistance = 100 * force;
+        let newX = buttonPosition.x - Math.cos(angle) * moveDistance;
+        let newY = buttonPosition.y - Math.sin(angle) * moveDistance;
+        
+        // Keep button within container bounds
+        const maxX = (container.width - button.width) / 2;
+        const maxY = (container.height - button.height) / 2 - 50;
+        
+        newX = Math.max(-maxX, Math.min(maxX, newX));
+        newY = Math.max(-maxY, Math.min(maxY, newY));
+        
+        setButtonPosition({ x: newX, y: newY });
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [isRecording, isProcessing, buttonPosition]);
 
   const startRecording = async () => {
     try {
@@ -188,6 +260,7 @@ export default function Microphone({ serverUrl = 'http://localhost:3001', onTran
   };
 
   const toggleRecording = () => {
+    console.log('toggleRecording called, isRecording:', isRecording);
     if (isRecording) {
       stopRecording();
     } else {
@@ -196,46 +269,58 @@ export default function Microphone({ serverUrl = 'http://localhost:3001', onTran
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 p-8 bg-white rounded-lg shadow-xl max-w-md w-full">
+    <div ref={containerRef} className="flex flex-col items-center gap-6 p-8 bg-white rounded-lg shadow-xl max-w-md w-full relative min-h-[300px]">
       <h1 className="text-3xl font-bold text-gray-800">World's most reliable transcriber</h1>
       
-      <button
-        onClick={toggleRecording}
-        disabled={isProcessing}
-        className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
-          isRecording 
-            ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-            : isProcessing
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-blue-500 hover:bg-blue-600'
-        }`}
-        aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+      <div 
+        ref={buttonRef}
+        className="relative"
+        style={{
+          transform: `translate(${buttonPosition.x}px, ${buttonPosition.y}px)`,
+          transition: isRecording || isProcessing ? 'none' : 'transform 0.3s ease-out',
+        }}
       >
-        {isRecording ? (
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className="h-10 w-10 text-white" 
-            viewBox="0 0 24 24" 
-            fill="currentColor"
-          >
-            <rect x="6" y="6" width="12" height="12" />
-          </svg>
-        ) : (
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className="h-10 w-10 text-white" 
-            viewBox="0 0 24 24" 
-            fill="currentColor"
-          >
-            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-          </svg>
-        )}
-      </button>
+        <button
+          onClick={toggleRecording}
+          disabled={isProcessing}
+          className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
+            isRecording 
+              ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+              : isProcessing
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600'
+          }`}
+          aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+        >
+          {isRecording ? (
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-10 w-10 text-white" 
+              viewBox="0 0 24 24" 
+              fill="currentColor"
+            >
+              <rect x="6" y="6" width="12" height="12" />
+            </svg>
+          ) : (
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-10 w-10 text-white" 
+              viewBox="0 0 24 24" 
+              fill="currentColor"
+            >
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+          )}
+        </button>
+      </div>
       
       <div className="text-center">
         <p className="text-lg font-semibold">
-          {isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Click to Start'}
+          {isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Press Spacebar to Start'}
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          {!isRecording && !isProcessing && '(Try clicking the button... if you can catch it!)'}
         </p>
         {statusMessage && (
           <p className="text-sm text-blue-600 mt-2">

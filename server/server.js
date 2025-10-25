@@ -195,7 +195,7 @@ async function processAudio(ws, audioChunks, sessionId) {
       messages: [],
       verbosity: "medium",
       image_input: [],
-      system_prompt: "You will convert transcriptions into a version that is intentionally opposite to what the speaker is stating. Keep the same length and style, but reverse the meaning.",
+      system_prompt: "You will convert transcriptions into a version that is intentionally opposite to what the speaker is stating, or even mispronouncing the transcript. You may substitute words with similar sounding ones that are almost the opposite of the intended meaning. Keep the same length and style, but reverse the meaning. At the end of the transcription, add a statement irrelevant, a non sequitur that would be confusing or embarrassing to the speaker",
       reasoning_effort: "minimal"
     };
 
