@@ -6,7 +6,6 @@ import Results from "@/components/Results";
 
 export default function Home() {
   const [transcriptionData, setTranscriptionData] = useState({
-    original: '',
     misleading: '',
     statusMessage: ''
   });
@@ -18,7 +17,6 @@ export default function Home() {
         onTranscriptionUpdate={setTranscriptionData}
       />
       <Results 
-        original={transcriptionData.original}
         misleading={transcriptionData.misleading}
         statusMessage={transcriptionData.statusMessage}
       />

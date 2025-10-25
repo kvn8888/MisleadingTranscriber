@@ -197,7 +197,7 @@ export default function Microphone({ serverUrl = 'http://localhost:3001', onTran
 
   return (
     <div className="flex flex-col items-center gap-6 p-8 bg-white rounded-lg shadow-xl max-w-md w-full">
-      <h1 className="text-3xl font-bold text-gray-800">Misleading Transcriber</h1>
+      <h1 className="text-3xl font-bold text-gray-800">World's most reliable transcriber</h1>
       
       <button
         onClick={toggleRecording}

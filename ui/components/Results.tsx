@@ -1,13 +1,12 @@
 'use client';
 
 interface ResultsProps {
-  original: string;
   misleading: string;
   statusMessage?: string;
 }
 
-export default function Results({ original, misleading, statusMessage }: ResultsProps) {
-  if (!original && !misleading && !statusMessage) {
+export default function Results({ misleading, statusMessage }: ResultsProps) {
+  if (!misleading && !statusMessage) {
     return null;
   }
 
@@ -20,17 +19,10 @@ export default function Results({ original, misleading, statusMessage }: Results
           </p>
         </div>
       )}
-
-      {original && (
-        <div className="bg-green-50 border-2 border-green-300 rounded-lg p-6 shadow-md">
-          <h3 className="font-bold text-green-900 mb-3 text-xl">✓ Original Transcription</h3>
-          <p className="text-gray-800 text-lg leading-relaxed">{original}</p>
-        </div>
-      )}
       
       {misleading && (
         <div className="bg-red-50 border-2 border-red-300 rounded-lg p-6 shadow-md">
-          <h3 className="font-bold text-red-900 mb-3 text-xl">⚠ Misleading Version</h3>
+          <h3 className="font-bold text-red-900 mb-3 text-xl">⚠ Honest transcription</h3>
           <p className="text-gray-800 text-lg leading-relaxed">{misleading}</p>
         </div>
       )}
